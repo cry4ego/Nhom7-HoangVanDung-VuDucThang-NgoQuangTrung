@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="name"/>
+                <field name="username"/>
                 <field name="email"/>
                 <field name="phone"/>
             </tree>
@@ -20,10 +21,16 @@
             <form>
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="email"/>
-                        <field name="phone"/>
-                        <field name="address"/>
+                        <group string="Thông tin cơ bản">
+                            <field name="name"/>
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="address"/>
+                        </group>
+                        <group string="Đăng nhập">
+                            <field name="username"/>
+                            <field name="password_hash" invisible="1"/>
+                        </group>
                     </group>
                     <notebook>
                         <page string="Đơn Hàng">

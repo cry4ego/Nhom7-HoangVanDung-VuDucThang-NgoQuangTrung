@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class OrderTaskIntegration(models.Model):
@@ -11,9 +14,9 @@ class OrderTaskIntegration(models.Model):
 
     # Mapping trạng thái đơn hàng -> trạng thái task
     ORDER_TO_TASK_STATE = {
-        'draft': {'state': 'todo', 'progress': 10},
-        'confirmed': {'state': 'in_progress', 'progress': 50},
-        'shipping': {'state': 'review', 'progress': 80},
+        'draft': {'state': 'todo', 'progress': 0},
+        'confirmed': {'state': 'todo', 'progress': 20},
+        'shipping': {'state': 'in_progress', 'progress': 70},
         'done': {'state': 'done', 'progress': 100},
         'cancel': {'state': 'cancel', 'progress': 0},
     }
@@ -27,7 +30,11 @@ class OrderTaskIntegration(models.Model):
     @api.model
     def create(self, vals):
         """Tự động tạo Task khi tạo đơn hàng mới"""
+        _logger.info("========== ORDER CREATE START ==========")
+        _logger.info(f"Creating order with vals: {vals}")
+        
         order = super(OrderTaskIntegration, self).create(vals)
+        _logger.info(f"Order created: ID={order.id}, Name={order.name}")
         
         # Tạo task tự động cho đơn hàng
         task_vals = {
@@ -51,9 +58,13 @@ class OrderTaskIntegration(models.Model):
             'deadline': order.delivery_date,
             'priority': '2',  # Độ ưu tiên cao
             'state': 'todo',
-            'progress': 10,
+            'progress': 0,
         }
-        self.env['task.management.task'].create(task_vals)
+        _logger.info(f"Creating task with vals: {task_vals}")
+        
+        task = self.env['task.management.task'].create(task_vals)
+        _logger.info(f"Task created: ID={task.id}, Name={task.name}")
+        _logger.info("========== ORDER CREATE END ==========")
         
         return order
 
@@ -65,7 +76,7 @@ class OrderTaskIntegration(models.Model):
         return result
 
     def action_ship(self):
-        """Override: Giao hàng và cập nhật task sang Review"""
+        """Override: Giao hàng và cập nhật task (tiến độ 70%)"""
         result = super(OrderTaskIntegration, self).action_ship()
         for order in self:
             order._update_related_tasks('shipping')

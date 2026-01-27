@@ -30,13 +30,11 @@ class TaskManagement(models.Model):
     ], string='Độ ưu tiên', default='1', widget='priority')
 
     state = fields.Selection([
-        ('draft', 'Nháp'),
         ('todo', 'Cần làm'),
         ('in_progress', 'Đang thực hiện'),
-        ('review', 'Chờ duyệt'),
         ('done', 'Hoàn thành'),
         ('cancel', 'Hủy bỏ')
-    ], string='Trạng thái', default='draft', tracking=True, group_expand='_expand_states')
+    ], string='Trạng thái', default='todo', tracking=True, group_expand='_expand_states')
 
     @api.constrains('start_date', 'deadline')
     def _check_dates(self):
@@ -47,10 +45,8 @@ class TaskManagement(models.Model):
     @api.onchange('state')
     def _onchange_state(self):
         state_progress = {
-            'draft': 0,         
-            'todo': 10,          
+            'todo': 0,          
             'in_progress': 50,   
-            'review': 80,       
             'done': 100,         
             'cancel': 0          
         }
@@ -62,15 +58,11 @@ class TaskManagement(models.Model):
 
     def action_todo(self):
         self.state = 'todo'
-        self.progress = 10
+        self.progress = 0
 
     def action_in_progress(self):
         self.state = 'in_progress'
         self.progress = 50
-    
-    def action_review(self):
-        self.state = 'review'
-        self.progress = 80
 
     def action_done(self):
         self.state = 'done'
