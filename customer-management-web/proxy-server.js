@@ -27,9 +27,9 @@ const mimeTypes = {
 proxy.on('error', (err, req, res) => {
     console.error('Proxy error:', err);
     res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-        error: 'Proxy error', 
-        message: err.message 
+    res.end(JSON.stringify({
+        error: 'Proxy error',
+        message: err.message
     }));
 });
 
@@ -38,12 +38,12 @@ const server = http.createServer((req, res) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
 
     // Handle API requests - proxy to Odoo
-    if (req.url.startsWith('/api/')) {
+    if (req.url.startsWith('/api/') || req.url.startsWith('/chatbot/')) {
         // Add CORS headers
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-        
+
         // Handle preflight
         if (req.method === 'OPTIONS') {
             res.writeHead(200);
@@ -52,7 +52,7 @@ const server = http.createServer((req, res) => {
         }
 
         // Proxy to Odoo backend
-        proxy.web(req, res, { 
+        proxy.web(req, res, {
             target: 'http://localhost:8069',
             changeOrigin: true
         });

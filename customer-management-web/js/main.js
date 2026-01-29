@@ -21,7 +21,7 @@ async function loadFeaturedProducts() {
 
     try {
         const response = await ProductsAPI.getAll();
-        
+
         if (response.success && response.data && response.data.length > 0) {
             const products = response.data.slice(0, 6); // Get first 6 products
             renderProducts(container, products);
@@ -40,7 +40,7 @@ function renderProducts(container, products) {
     container.innerHTML = products.map(product => `
         <div class="product-card" data-id="${product.id}">
             <div class="product-image">
-                <i class="${getProductIcon(product.category_id?.name)}"></i>
+                <img src="${getProductImage(product.category_id?.name)}" alt="${product.name}" class="product-img">
                 ${product.stock_quantity < 5 ? '<span class="product-badge">Hot</span>' : ''}
             </div>
             <div class="product-content">
@@ -112,7 +112,7 @@ function renderDemoProducts(container) {
             stock_quantity: 15
         }
     ];
-    
+
     renderProducts(container, demoProducts);
 }
 
@@ -133,6 +133,18 @@ function getProductIcon(category) {
     return icons[category] || 'fas fa-project-diagram';
 }
 
+// Get Product Image based on category
+function getProductImage(category) {
+    const images = {
+        'Website': 'images/products/website.png',
+        'E-Commerce': 'images/products/ecommerce.png',
+        'Mobile App': 'images/products/mobile-app.png',
+        'ERP': 'images/products/erp.png',
+        'CRM': 'images/products/crm.png'
+    };
+    return images[category] || 'images/products/website.png';
+}
+
 // Add to Cart
 function addToCart(product) {
     cart.addItem(product);
@@ -145,7 +157,7 @@ async function loadCategories() {
 
     try {
         const response = await CategoriesAPI.getAll();
-        
+
         if (response.success && response.data && response.data.length > 0) {
             renderCategories(container, response.data);
         } else {
@@ -178,7 +190,7 @@ function renderDemoCategories(container) {
         { name: 'E-Commerce', description: '25+ dự án', icon: 'fas fa-shopping-cart' },
         { name: 'ERP/CRM', description: '10+ dự án', icon: 'fas fa-building' }
     ];
-    
+
     container.innerHTML = demoCategories.map(category => `
         <div class="category-card" onclick="filterByCategory('${category.name}')">
             <div class="category-icon">
@@ -287,9 +299,9 @@ document.addEventListener('keydown', (e) => {
 function togglePasswordVisibility(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
-    
+
     const icon = input.parentElement.querySelector('.toggle-password i');
-    
+
     if (input.type === 'password') {
         input.type = 'text';
         if (icon) {

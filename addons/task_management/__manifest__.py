@@ -22,6 +22,7 @@
         'views/task_view.xml',
         'views/order_inherit_view.xml',
         'views/menu.xml',
+        'data/demo_data.xml',
     ],
     'application': True,
     'installable': True,

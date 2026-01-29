@@ -13,6 +13,7 @@
         'views/potential_customer_views.xml',
         'views/product_category_views.xml',
         'views/care_views.xml',
+        'data/demo_data.xml',
     ],
     'installable': True,
     'application': True,

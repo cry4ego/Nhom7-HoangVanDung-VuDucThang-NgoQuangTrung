@@ -19,7 +19,7 @@ function checkUrlParams() {
             // Update active filter button
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
-                if (btn.textContent.trim() === category || 
+                if (btn.textContent.trim() === category ||
                     (category === 'all' && btn.textContent.trim() === 'Tất cả')) {
                     btn.classList.add('active');
                 }
@@ -35,7 +35,7 @@ async function loadAllProducts() {
 
     try {
         const response = await ProductsAPI.getAll();
-        
+
         if (response.success && response.data && response.data.length > 0) {
             allProducts = response.data;
             renderProductsGrid(allProducts);
@@ -170,7 +170,7 @@ function renderProductsGrid(products) {
     container.innerHTML = products.map(product => `
         <div class="product-card" data-id="${product.id}" data-category="${product.category_id?.name || ''}">
             <div class="product-image">
-                <i class="${getProductIcon(product.category_id?.name)}"></i>
+                <img src="${getProductImage(product.category_id?.name)}" alt="${product.name}" class="product-img">
                 ${product.stock_quantity < 5 ? '<span class="product-badge">Hot</span>' : ''}
             </div>
             <div class="product-content">
@@ -181,7 +181,7 @@ function renderProductsGrid(products) {
                     <div class="product-price">
                         ${formatCurrency(product.price)}
                     </div>
-                    <button class="add-to-cart-btn" onclick='addToCart(${JSON.stringify(product).replace(/'/g, "\\'")})'>
+                    <button class="add-to-cart-btn" onclick='addToCart(${JSON.stringify(product).replace(/'/g, "\\'")})'">
                         <i class="fas fa-cart-plus"></i>
                     </button>
                 </div>
@@ -193,7 +193,7 @@ function renderProductsGrid(products) {
 // Filter Products
 function filterProducts(category, buttonElement) {
     currentFilter = category;
-    
+
     // Update active button
     if (buttonElement) {
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -204,7 +204,7 @@ function filterProducts(category, buttonElement) {
     if (category === 'all') {
         filteredProducts = allProducts;
     } else {
-        filteredProducts = allProducts.filter(p => 
+        filteredProducts = allProducts.filter(p =>
             p.category_id?.name?.toLowerCase().includes(category.toLowerCase())
         );
     }
@@ -215,16 +215,16 @@ function filterProducts(category, buttonElement) {
 // Search Products
 function searchProducts() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-    
+
     let filteredProducts = allProducts.filter(product => {
-        const matchesSearch = 
+        const matchesSearch =
             product.name.toLowerCase().includes(searchTerm) ||
             (product.description || '').toLowerCase().includes(searchTerm) ||
             (product.category_id?.name || '').toLowerCase().includes(searchTerm);
-        
-        const matchesFilter = currentFilter === 'all' || 
+
+        const matchesFilter = currentFilter === 'all' ||
             (product.category_id?.name || '').toLowerCase().includes(currentFilter.toLowerCase());
-        
+
         return matchesSearch && matchesFilter;
     });
 
@@ -246,4 +246,16 @@ function getProductIcon(category) {
         'Cloud': 'fas fa-cloud'
     };
     return icons[category] || 'fas fa-project-diagram';
+}
+
+// Get Product Image based on category
+function getProductImage(category) {
+    const images = {
+        'Website': 'images/products/website.png',
+        'E-Commerce': 'images/products/ecommerce.png',
+        'Mobile App': 'images/products/mobile-app.png',
+        'ERP': 'images/products/erp.png',
+        'CRM': 'images/products/crm.png'
+    };
+    return images[category] || 'images/products/website.png';
 }
