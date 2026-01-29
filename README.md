@@ -79,7 +79,6 @@ Module quản lý công việc và tiến độ dự án, tích hợp với Cust
 
 **Tính năng:**
 - ✅ Quản lý danh sách công việc (Tasks)
-- ✅ Giao diện Kanban (Kéo thả trạng thái)
 - ✅ Theo dõi hạn chót (Deadline) & KPI
 - ✅ Báo cáo tiến độ
 - ✅ Tự động tạo Task khi có đơn hàng mới
