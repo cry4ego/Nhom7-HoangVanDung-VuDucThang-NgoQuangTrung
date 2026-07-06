@@ -17,6 +17,8 @@
 6. [Những gì đã làm được](#6-những-gì-đã-làm-được)
 7. [Cải tiến so với bản gốc](#7-cải-tiến-so-với-bản-gốc)
 8. [Câu hỏi bảo vệ thường gặp](#8-câu-hỏi-bảo-vệ-thường-gặp)
+9. [Tài liệu nộp bắt buộc (sơ đồ luồng & poster)](#9-tài-liệu-nộp-bắt-buộc-sơ-đồ-luồng--poster)
+10. [Ai làm gì — dòng thời gian đóng góp](#10-ai-làm-gì--dòng-thời-gian-đóng-góp)
 
 ---
 
@@ -37,6 +39,9 @@ Hệ thống giải quyết bài toán: **một công ty cần quản lý nhân 
 │                        AI trả lời tự động                       │
 │                        (đọc dữ liệu từ cả 3 module trên)       │
 └─────────────────────────────────────────────────────────────────┘
+                │                              │
+                ▼                              ▼
+     Gemini API (AI/LLM, RAG vector)   Telegram Bot API (External API)
 ```
 
 **Triết lý thiết kế:** `nhan_su` là nguồn dữ liệu nhân viên duy nhất.  
@@ -283,6 +288,14 @@ Ngay khi đơn hàng được tạo, order_inherit.py kích hoạt:
    - nhan_vien_id = NV được chọn tự động
    - deadline = ngày giao hàng của đơn
 
+BƯỚC 4.5: Báo cho nhân viên qua Telegram (External API) ⭐ MỚI
+──────────────────────────────────────────────────────────────
+Ngay sau khi task được tạo, order._notify_telegram_new_task() chạy:
+1. Đọc cấu hình Settings > Task Management (bật/tắt, bot_token, chat_id)
+2. Nếu đã bật + đủ cấu hình → gọi Telegram Bot API (sendMessage)
+3. Gửi nội dung: tên đơn, khách hàng, tên task, người phụ trách, hạn chót
+4. Lỗi mạng / thiếu cấu hình chỉ log lại, KHÔNG làm hỏng việc tạo đơn hàng
+
 BƯỚC 5: Đồng bộ trạng thái (tự động)
 ──────────────────────────────────────
 Khi bấm nút trên đơn hàng → task tự cập nhật:
@@ -302,32 +315,45 @@ Khi task = done:
 
 ---
 
-### Luồng Chatbot AI
+### Luồng Chatbot AI (đã nâng cấp lên RAG vector thật)
 
 ```
 Người dùng gõ câu hỏi
         │
         ▼
-Chatbot phân tích từ khóa:
-  "đơn hàng" → query khach_hang.order
-  "khách hàng" → query khach_hang.customer
-  "công việc" → query task.management.task
-  "nhân viên" → query nhan_vien
-  "sản phẩm" → query khach_hang.product
+_retrieve_documents(): tìm tài liệu liên quan trong Knowledge Base
+        │
+        ├─► [ƯU TIÊN] Semantic search bằng vector embedding:
+        │      1. Gọi Gemini Embedding API → vector của câu hỏi
+        │      2. So cosine similarity với embedding_vector đã lưu
+        │         sẵn của từng tài liệu (sinh tự động khi tạo/sửa KB)
+        │      3. Lọc theo similarity_threshold, lấy top_k, dùng điểm
+        │         similarity cao nhất làm confidence_score
+        │
+        └─► [FALLBACK] Nếu thiếu API key / lỗi mạng / chưa có
+               embedding nào → quay lại keyword search (ilike) như cũ,
+               confidence_score tính theo tỉ lệ từ khóa khớp được
         │
         ▼
-Song song: tìm tài liệu trong Knowledge Base
-  (7 tài liệu FAQ, chính sách, quy trình)
+Song song: _get_live_data() phân tích từ khóa để query dữ liệu SỐNG
+  "đơn hàng" → khach_hang.order   "khách hàng" → khach_hang.customer
+  "công việc" → task.management.task   "nhân viên" → nhan_vien
+  "sản phẩm" → khach_hang.product
         │
         ▼
-Ghép dữ liệu thực + tài liệu → gửi Gemini API
+Ghép (tài liệu KB + dữ liệu sống) → gửi Gemini API sinh câu trả lời
         │
         ▼
-Gemini sinh câu trả lời tiếng Việt, tự nhiên
+Gemini sinh câu trả lời tiếng Việt, tự nhiên, không bịa đặt
         │
         ▼
-Lưu vào chatbot.conversation (có thể xem lại)
+Lưu vào chatbot.conversation + chatbot.message
+  (kèm confidence_score, retrieved_docs, model_used, response_time thật)
 ```
+
+> **Vì sao có 2 tầng (semantic → keyword fallback)?** Đồ án cần chạy được ngay cả
+> khi chưa cấu hình Gemini API Key hoặc mất mạng — thay vì chatbot "chết cứng",
+> hệ thống tự rơi về tìm kiếm từ khóa để vẫn trả lời được, chỉ là kém chính xác hơn.
 
 ---
 
@@ -387,6 +413,28 @@ def _update_related_tasks(self, order_state):
 > Vì khi hoàn thành cần chạy thêm logic tạo care activity (trong `action_done` của task).  
 > Nếu dùng `write()` trực tiếp → chỉ cập nhật dữ liệu, bỏ qua toàn bộ logic nghiệp vụ.
 
+**Hàm `_notify_telegram_new_task()` — External API (mới thêm):**
+
+```python
+def _notify_telegram_new_task(self, task, nhan_vien, order):
+    ICP = self.env['ir.config_parameter'].sudo()
+    if not ICP.get_param('task_management.telegram_notify_enabled'):
+        return  # tắt trong Settings → không gửi
+
+    bot_token = ICP.get_param('task_management.telegram_bot_token')
+    chat_id = ICP.get_param('task_management.telegram_chat_id')
+    if not bot_token or not chat_id:
+        return  # chưa cấu hình đủ
+
+    # Gọi https://api.telegram.org/bot{token}/sendMessage
+    # Nội dung: tên đơn, khách hàng, tên task, người phụ trách, hạn chót
+    # Toàn bộ bọc try/except — lỗi mạng không được làm hỏng việc tạo đơn
+```
+
+Cấu hình 3 field này nằm ở **Settings > Task Management** (`res_config_settings.py` +
+`views/res_config_settings_view.xml`), lưu qua `ir.config_parameter` — không hardcode
+token trong code, đúng nguyên tắc bảo mật.
+
 ---
 
 ### `addons/chatbot_support/controllers/chatbot_controller.py`
@@ -398,13 +446,34 @@ Nhận request POST
 → Tìm/tạo conversation theo session_id
 → Lưu tin nhắn người dùng
 → Gọi _get_bot_response():
-    → _retrieve_documents(): tìm KB bằng từ khóa
+    → _retrieve_documents(): semantic search (vector) → fallback keyword search
     → _get_live_data(): query DB thực
     → _build_context(): ghép thành chuỗi context
     → _generate_response(): gọi Gemini API
-→ Lưu câu trả lời của bot
+→ Lưu câu trả lời của bot (kèm confidence_score tính thật)
 → Trả JSON về client
 ```
+
+**Hàm `_cosine_similarity()` + `_retrieve_documents_semantic()` (mới thêm):**
+
+```python
+def _cosine_similarity(vec_a, vec_b):
+    # dot(a, b) / (||a|| * ||b||) — thuần Python, không cần numpy
+    ...
+
+def _retrieve_documents_semantic(self, query, config):
+    # 1. Lấy các tài liệu KB đã có embedding_vector (sinh sẵn khi lưu KB)
+    # 2. Gọi config.generate_embedding(query) để có vector câu hỏi
+    # 3. Tính cosine similarity với từng tài liệu, lọc theo similarity_threshold
+    # 4. Sắp xếp giảm dần, lấy top_k, trả về (docs, top_similarity_score)
+    # → Nếu bất kỳ bước nào thất bại (thiếu API key, chưa có embedding...)
+    #   trả về rỗng để _retrieve_documents() tự chuyển sang keyword search
+```
+
+**Hàm `generate_embedding()` trong `chatbot_config.py` (mới thêm):**  
+Gọi Gemini Embedding API (`models/text-embedding-004`) để sinh vector cho một đoạn
+text bất kỳ — dùng chung cho cả việc sinh embedding của tài liệu KB (khi tạo/sửa)
+và embedding của câu hỏi khách hàng (lúc chat).
 
 ---
 
@@ -569,7 +638,16 @@ A: Có 2 nguồn: (1) Knowledge Base — tài liệu FAQ nhập tay, (2) Live Da
 A: `write()` là lệnh SQL thuần — chỉ cập nhật cột trong DB. `action_done()` là Python method — chạy toàn bộ business logic bao gồm tạo care activity. Bản gốc dùng `write()` nên bỏ qua logic.
 
 **Q: Mức 1/2/3 khác nhau thế nào trong code?**  
-A: Mức 1 = model + view + dữ liệu mẫu. Mức 2 = `_inherit` + automation (`create`, `action_*`). Mức 3 = external API (Gemini) + RAG + giao diện AI. Mỗi mức đòi hỏi hiểu sâu hơn về Odoo framework.
+A: Mức 1 = model + view + dữ liệu mẫu. Mức 2 = `_inherit` + automation (`create`, `action_*`). Mức 3 = AI/LLM (Gemini + RAG) **và** External API (Telegram) + giao diện AI. Mỗi mức đòi hỏi hiểu sâu hơn về Odoo framework.
+
+**Q: Tại sao chatbot có 2 tầng tìm kiếm (semantic + keyword) thay vì chỉ 1?**  
+A: Vì Gemini API key có thể chưa được cấu hình, hết quota, hoặc mất mạng khi demo trực tiếp. Nếu chỉ dùng vector search, chatbot sẽ "câm" hoàn toàn trong tình huống đó. Thiết kế fallback đảm bảo hệ thống luôn trả lời được — chỉ khác nhau về độ chính xác/`confidence_score`.
+
+**Q: Vector embedding được lưu ở đâu, tính lúc nào?**  
+A: Lưu trong field `embedding_vector` (Text, dạng JSON) của `chatbot.knowledge.base`, được sinh tự động ngay khi tạo hoặc sửa nội dung tài liệu (override `create()`/`write()`). Khi có câu hỏi, hệ thống chỉ cần sinh embedding cho câu hỏi rồi so sánh với các vector đã lưu sẵn — không phải gọi API embedding cho toàn bộ KB mỗi lần chat.
+
+**Q: Vì sao Telegram token/chat_id không hardcode trong code?**  
+A: Vì đó là thông tin nhạy cảm (bí mật) — hardcode sẽ lộ khi đẩy code lên GitHub công khai. Nhóm lưu qua `ir.config_parameter` (giống cách Odoo lưu các API key khác), cấu hình tại **Settings > Task Management**, mỗi môi trường (dev/demo) có thể dùng bot khác nhau mà không sửa code.
 
 ---
 
@@ -594,6 +672,11 @@ A: Mức 1 = model + view + dữ liệu mẫu. Mức 2 = `_inherit` + automation
 | Auto-gán NV khi tạo đơn | ❌ Không có | ✅ Đã thêm (load balancing) |
 | Care activity tự động khi task done | ❌ Bug — không hoạt động | ✅ Đã sửa |
 | Chatbot widget trên backend Odoo | ❌ Không có | ✅ Đã thêm mới hoàn toàn |
+| RAG tìm tài liệu KB | ❌ Không có (chưa fork tới) | ✅ Semantic vector (Gemini Embedding), fallback keyword |
+| Confidence score của câu trả lời AI | ❌ Không có | ✅ Tính thật từ similarity / tỉ lệ khớp từ khóa |
+| External API (Telegram/Zalo/Calendar...) | ❌ Không có | ✅ Đã thêm Telegram Bot API báo task mới |
+| Sơ đồ luồng nghiệp vụ End-to-End (bắt buộc nộp) | ❌ Không có | ✅ `docs/business-flow/*.pdf` |
+| Poster giới thiệu hệ thống (bắt buộc nộp) | ❌ Không có | ✅ `docs/poster/*.pdf` |
 
 ---
 
@@ -777,6 +860,63 @@ Kết quả: nút 🤖 xuất hiện góc phải dưới trên mọi trang Odoo,
 
 ---
 
+### Cải tiến 6: External API — Telegram Bot thông báo task mới
+
+**Vấn đề:** Repo gốc (và cả bản chatbot trước đó) chưa kết nối với bất kỳ dịch vụ
+bên ngoài nào (mục III "Yêu cầu nâng cao" của đề bài yêu cầu External API: Google
+Calendar, Telegram, Zalo...) — nếu chỉ có AI/LLM thì thiếu nửa còn lại của tiêu chí
+Mức 3 ("AI & External API").
+
+**Thêm mới hoàn toàn:**
+- `addons/task_management/models/res_config_settings.py` — 3 field cấu hình
+  (`telegram_notify_enabled`, `telegram_bot_token`, `telegram_chat_id`) lưu qua
+  `ir.config_parameter`, hiển thị tại **Settings > Task Management**.
+- `order_inherit.py: _notify_telegram_new_task()` — gọi ngay sau khi task được
+  tự động tạo và gán nhân viên (trong `create()`), gửi tin nhắn Telegram gồm:
+  tên đơn, khách hàng, tên task, người phụ trách, hạn chót.
+- An toàn: nếu chưa bật hoặc thiếu bot_token/chat_id → bỏ qua lặng lẽ; nếu gọi
+  API lỗi (mất mạng, token sai) → chỉ log lỗi, không raise → không làm hỏng
+  luồng tạo đơn hàng chính.
+
+```
+Trước: Nhân viên chỉ biết có việc mới khi tự vào Odoo kiểm tra
+
+Sau:   Task vừa được auto-gán → Telegram báo ngay lập tức
+       → Không cần đăng nhập Odoo mới biết được giao việc
+```
+
+---
+
+### Cải tiến 7: RAG nâng cấp từ keyword search lên vector embedding thật
+
+**Vấn đề:** Bản chatbot trước có RAG nhưng chỉ tìm bằng `ilike` (khớp chuỗi con) —
+không hiểu ngữ nghĩa, đồng thời `confidence_score` bị hardcode `0.8` cho mọi câu
+trả lời (không phản ánh đúng mức độ tin cậy thật).
+
+**Thêm mới:**
+- `chatbot_config.generate_embedding()` — gọi Gemini Embedding API
+  (`models/text-embedding-004`) sinh vector cho bất kỳ đoạn text nào.
+- `knowledge_base.py` — tự động sinh và lưu `embedding_vector` (JSON) mỗi khi
+  tạo/sửa nội dung tài liệu (`_generate_embedding_silent()`), không chặn thao
+  tác nếu API lỗi.
+- `chatbot_controller._retrieve_documents_semantic()` — sinh embedding cho câu
+  hỏi, tính cosine similarity với từng tài liệu, lọc theo `similarity_threshold`,
+  lấy `top_k_results`, dùng điểm similarity cao nhất làm `confidence_score`.
+- **Fallback 2 tầng:** nếu không có tài liệu nào có embedding, thiếu API key,
+  hoặc similarity quá thấp → tự động rơi về keyword search (`ilike`) như cũ,
+  với confidence tính theo tỉ lệ từ khóa khớp được — chatbot không bao giờ
+  "chết cứng" chỉ vì thiếu cấu hình AI.
+
+```
+Trước: "đơn hàng của tôi" chỉ khớp tài liệu có chứa đúng chữ "đơn hàng"
+       confidence luôn = 0.8 dù đúng hay sai
+
+Sau:   Hiểu được các câu hỏi diễn đạt khác nhau nhưng cùng ý nghĩa
+       (nhờ vector embedding), confidence phản ánh đúng độ tin cậy
+```
+
+---
+
 ### Tóm tắt: Nhóm tự đóng góp gì so với repo gốc
 
 ```
@@ -800,11 +940,48 @@ bản nhóm
         │   └── create() gán nhan_vien_id tự động
         │
         └── THÊM TÍNH NĂNG MỨC 3
-            └── Floating chatbot widget (OWL Component)
-                → js + xml + css + asset registration
+            ├── Floating chatbot widget (OWL Component)
+            │   → js + xml + css + asset registration
+            ├── RAG vector embedding thật (Gemini Embedding API)
+            │   → cosine similarity + fallback keyword search
+            │   → confidence_score tính thật, không hardcode
+            └── External API: Telegram Bot thông báo task mới
+                → cấu hình qua Settings > Task Management
 ```
+
+**Ngoài code**, nhóm còn bổ sung 2 tài liệu bắt buộc của đề bài (xem [mục 9](#9-tài-liệu-nộp-bắt-buộc-sơ-đồ-luồng--poster)):
+sơ đồ luồng nghiệp vụ End-to-End (`docs/business-flow/`) và poster giới thiệu hệ thống (`docs/poster/`).
 
 ---
 
-*Tài liệu này phản ánh code thực tế tại thời điểm 30/06/2026.*  
+## 9. Tài liệu nộp bắt buộc (sơ đồ luồng & poster)
+
+Ngoài code, đề bài yêu cầu 2 tài liệu không phải code, nhóm đã bổ sung:
+
+| Yêu cầu đề bài | File trong repo | Nội dung |
+|---|---|---|
+| "01 file duy nhất... mô tả luồng nghiệp vụ End-to-End (Swimlane/BPMN)" đặt tại `docs/business-flow/` | `docs/business-flow/Nhom07_BusinessFlow_QuanLyKhachHang_QuanLyCongViec.pdf` | Swimlane 12 bước, 4 actor (Khách hàng / Nhân viên / Hệ thống Odoo / Dịch vụ ngoài), đánh dấu rõ điểm tích hợp HRM, trigger Mức 2, và điểm AI/LLM + External API của Mức 3 |
+| "Poster giới thiệu về hệ thống" (mục II, bắt buộc) | `docs/poster/Nhom07_Poster_HeThongERP.pdf` | Kiến trúc hệ thống, vai trò 4 module, điểm nổi bật, công nghệ sử dụng |
+
+**Lưu ý khi bảo vệ:** sơ đồ chỉ vẽ 1 luồng chính (happy path), không vẽ các nhánh lỗi/hủy đơn — đúng yêu cầu "Chỉ vẽ 01 luồng chính (happy path) end-to-end" của đề bài. Các trường hợp ngoại lệ (đơn hủy, thiếu nhân viên rảnh, Telegram/Gemini lỗi mạng) được xử lý bằng fallback trong code (xem mục 7, 8) nhưng không thể hiện trên sơ đồ.
+
+---
+
+## 10. Ai làm gì — dòng thời gian đóng góp
+
+Repo này có lịch sử commit trải dài từ code gốc của tác giả template đến các đợt
+đóng góp của nhóm. Để tránh nhầm lẫn "code base gốc" với "phần nhóm tự làm":
+
+| Giai đoạn | Tác giả (theo git log) | Đã làm gì |
+|---|---|---|
+| Khởi tạo | rynxu2 (Đỗ Bảo Long) | Scaffold Odoo 15 + 3 module cơ bản: `nhan_su`, `customer_management`, `task_management` — có 3 bug (xem mục 7) và thiếu liên kết HRM/tự động hóa |
+| Đợt 1 | Vũ Minh Quốc | Thêm giao diện web cho customer_management, thêm mới hoàn toàn module `chatbot_support` (Gemini + RAG cơ bản, trang chat standalone) |
+| Đợt 2 (phiên làm việc này) | dunghv (nhóm) | Sửa 3 bug lõi ở `nhan_su`/`task_management`; thêm `trang_thai_lam_viec`, `nhan_vien_phu_trach_id`; thêm load-balancing auto-gán nhân viên; thêm floating chatbot widget; **nâng cấp RAG lên vector embedding thật + confidence_score thực; thêm External API Telegram; bổ sung sơ đồ luồng nghiệp vụ + poster bắt buộc** |
+
+Dùng bảng này khi giảng viên hỏi "phần nào là của nhóm, phần nào kế thừa" — trả lời
+theo đúng 2 cột cuối, không nhận vơ phần scaffold ban đầu của `rynxu2`.
+
+---
+
+*Tài liệu này phản ánh code thực tế tại thời điểm 06/07/2026.*  
 *Cập nhật mỗi khi có thay đổi quan trọng.*
