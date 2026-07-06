@@ -18,6 +18,8 @@
                             <field name="so_nguoi_bang_tuoi"/>
                             <field name="que_quan"/>
                             <field name="email"/>
+                            <field name="so_dien_thoai"/>
+                            <field name="trang_thai_lam_viec"/>
                             <field name="anh" widget="image"/>
                         </group>
                         <notebook>
@@ -48,6 +50,7 @@
                     <field name="so_nguoi_bang_tuoi"/>
                     <field name="que_quan"/>
                     <field name="email"/>
+                    <field name="trang_thai_lam_viec"/>
                 </tree>
             </field>
         </record>
@@ -62,6 +65,13 @@
                     <field name="tuoi"/>
                     <field name="que_quan"/>
                     <field name="email"/>
+                    <field name="trang_thai_lam_viec"/>
+                    <filter name="loc_dang_lam" string="Đang làm việc"
+                            domain="[('trang_thai_lam_viec', '=', 'dang_lam')]"/>
+                    <filter name="loc_tam_nghi" string="Tạm nghỉ"
+                            domain="[('trang_thai_lam_viec', '=', 'tam_nghi')]"/>
+                    <filter name="loc_da_nghi" string="Đã nghỉ việc"
+                            domain="[('trang_thai_lam_viec', '=', 'da_nghi')]"/>
                 </search>
             </field>
         </record>

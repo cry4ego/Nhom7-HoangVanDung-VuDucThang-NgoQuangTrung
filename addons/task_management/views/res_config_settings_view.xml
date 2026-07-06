@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_task_management" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.task_management</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="30"/>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="Task Management" string="Task Management" data-key="task_management">
+                    <h2>External API - Telegram</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="telegram_notify_enabled"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="telegram_notify_enabled" string="Thông báo Telegram khi có công việc mới"/>
+                                <div class="text-muted">
+                                    Tự động gửi tin nhắn Telegram khi hệ thống tạo và gán công việc mới cho nhân viên (Mức 3 - External API).
+                                </div>
+                                <div class="content-group" attrs="{'invisible': [('telegram_notify_enabled', '=', False)]}">
+                                    <div class="mt8">
+                                        <label for="telegram_bot_token" string="Bot Token"/>
+                                        <field name="telegram_bot_token" placeholder="123456:ABC-DEF..."/>
+                                    </div>
+                                    <div class="mt8">
+                                        <label for="telegram_chat_id" string="Chat ID"/>
+                                        <field name="telegram_chat_id" placeholder="-1001234567890"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

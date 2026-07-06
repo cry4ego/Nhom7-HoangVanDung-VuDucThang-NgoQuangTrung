@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="chatbot_support.ChatbotWidget" owl="1">
+        <div class="chatbot-float-container">
+
+            <!-- Chat Panel -->
+            <div t-if="state.isOpen" class="chatbot-panel">
+                <div class="chatbot-header">
+                    <div class="chatbot-header-info">
+                        <span class="chatbot-avatar">🤖</span>
+                        <div>
+                            <div class="chatbot-name">AI Chatbot</div>
+                            <div class="chatbot-status">Hỗ trợ 24/7</div>
+                        </div>
+                    </div>
+                    <button class="chatbot-close" t-on-click="closeChat">✕</button>
+                </div>
+
+                <div class="chatbot-messages">
+                    <t t-foreach="state.messages" t-as="msg" t-key="msg.id">
+                        <div t-attf-class="chatbot-msg chatbot-msg--{{msg.type}}">
+                            <t t-esc="msg.text"/>
+                        </div>
+                    </t>
+                    <div t-if="state.isLoading" class="chatbot-msg chatbot-msg--bot chatbot-typing">
+                        <span/><span/><span/>
+                    </div>
+                    <div t-ref="messagesEnd"/>
+                </div>
+
+                <div class="chatbot-suggestions">
+                    <button t-on-click="() => this.sendSuggestion('Danh sách đơn hàng gần đây')">📦 Đơn hàng</button>
+                    <button t-on-click="() => this.sendSuggestion('Danh sách khách hàng')">👥 Khách hàng</button>
+                    <button t-on-click="() => this.sendSuggestion('Tiến độ công việc hiện tại')">📋 Công việc</button>
+                    <button t-on-click="() => this.sendSuggestion('Danh sách nhân viên đang làm việc')">👨‍💼 Nhân viên</button>
+                </div>
+
+                <div class="chatbot-input-area">
+                    <input
+                        type="text"
+                        class="chatbot-input"
+                        placeholder="Nhập câu hỏi..."
+                        t-att-value="state.inputText"
+                        t-on-input="onInput"
+                        t-on-keypress="onInputKeypress"
+                        t-att-disabled="state.isLoading"
+                    />
+                    <button
+                        class="chatbot-send"
+                        t-on-click="sendMessage"
+                        t-att-disabled="state.isLoading"
+                    >➤</button>
+                </div>
+            </div>
+
+            <!-- Floating Toggle Button -->
+            <button class="chatbot-toggle-btn" t-on-click="toggleChat" t-att-title="state.isOpen ? 'Đóng chat' : 'Mở AI Chatbot'">
+                <t t-if="state.isOpen">✕</t>
+                <t t-else="">🤖</t>
+            </button>
+        </div>
+    </t>
+</templates>

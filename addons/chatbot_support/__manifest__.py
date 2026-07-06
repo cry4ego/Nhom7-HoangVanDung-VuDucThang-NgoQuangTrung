@@ -27,6 +27,14 @@
         'views/menu.xml',
     ],
     
+    'assets': {
+        'web.assets_backend': [
+            'chatbot_support/static/src/css/chatbot_widget.css',
+            'chatbot_support/static/src/xml/chatbot_widget.xml',
+            'chatbot_support/static/src/js/chatbot_widget.js',
+        ],
+    },
+
     'application': True,
     'installable': True,
     'auto_install': False,

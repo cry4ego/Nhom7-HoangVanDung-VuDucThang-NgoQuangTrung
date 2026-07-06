@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import json
+import logging
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 class ChatbotKnowledgeBase(models.Model):
     _name = 'chatbot.knowledge.base'
@@ -82,28 +86,50 @@ class ChatbotKnowledgeBase(models.Model):
     def create(self, vals):
         """Override create to generate embedding"""
         record = super(ChatbotKnowledgeBase, self).create(vals)
-        # TODO: Trigger embedding generation in background
+        record._generate_embedding_silent()
         return record
-    
+
     def write(self, vals):
         """Override write to regenerate embedding if content changes"""
         result = super(ChatbotKnowledgeBase, self).write(vals)
         if 'content' in vals or 'content_plain' in vals:
-            # TODO: Trigger embedding regeneration
-            pass
+            self._generate_embedding_silent()
         return result
-    
+
+    def _generate_embedding_silent(self):
+        """Sinh embedding cho từng bản ghi, không raise lỗi (best-effort).
+
+        Thiếu Gemini API key hoặc lỗi mạng chỉ được log, không được chặn việc
+        tạo/sửa knowledge base — tìm kiếm sẽ tự rơi về keyword search (xem
+        chatbot_controller._retrieve_documents).
+        """
+        try:
+            config = self.env['chatbot.config'].sudo().get_active_config()
+        except Exception:
+            return
+        for record in self:
+            if not record.content_plain:
+                continue
+            vector = config.generate_embedding(record.content_plain)
+            if vector:
+                record.sudo().write({
+                    'embedding_vector': json.dumps(vector),
+                    'embedding_model': config.embedding_model,
+                })
+
     def action_generate_embedding(self):
         """Manual action to generate/regenerate embedding"""
-        # TODO: Call RAG service to generate embedding
         self.ensure_one()
+        self._generate_embedding_silent()
+        success = bool(self.embedding_vector)
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': 'Thành công',
-                'message': 'Đã tạo embedding cho tài liệu này',
-                'type': 'success',
+                'title': 'Thành công' if success else 'Thất bại',
+                'message': 'Đã tạo embedding cho tài liệu này' if success
+                           else 'Không tạo được embedding — kiểm tra Gemini API Key trong cấu hình Chatbot',
+                'type': 'success' if success else 'danger',
             }
         }
     

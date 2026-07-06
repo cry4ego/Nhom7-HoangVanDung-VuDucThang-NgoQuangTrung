@@ -9,6 +9,7 @@
                 <field name="username"/>
                 <field name="email"/>
                 <field name="phone"/>
+                <field name="nhan_vien_phu_trach_id"/>
             </tree>
         </field>
     </record>
@@ -26,6 +27,7 @@
                             <field name="email"/>
                             <field name="phone"/>
                             <field name="address"/>
+                            <field name="nhan_vien_phu_trach_id"/>
                         </group>
                         <group string="Đăng nhập">
                             <field name="username"/>

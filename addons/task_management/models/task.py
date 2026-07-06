@@ -2,6 +2,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from datetime import date
+from odoo.tools import date_utils
 
 class TaskManagement(models.Model):
     _name = 'task.management.task'
@@ -67,6 +68,13 @@ class TaskManagement(models.Model):
     def action_done(self):
         self.state = 'done'
         self.progress = 100
+        if self.partner_id:
+            self.env['khach_hang.care_activity'].create({
+                'customer_id': self.partner_id.id,
+                'care_date': fields.Date.context_today(self),
+                'contact_method': 'phone',
+                'notes': f"Công việc \"{self.name}\" đã hoàn thành. Nhân viên thực hiện: {self.nhan_vien_id.ho_va_ten if self.nhan_vien_id else 'N/A'}",
+            })
 
     def action_cancel(self):
         self.state = 'cancel'

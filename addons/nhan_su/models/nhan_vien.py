@@ -14,11 +14,16 @@ class NhanVien(models.Model):
     ho_ten_dem = fields.Char("Họ tên đệm", required=True)
     ten = fields.Char("Tên", required=True)
     ho_va_ten = fields.Char("Họ và tên", compute="_compute_ho_va_ten", store=True)
-    
+
     ngay_sinh = fields.Date("Ngày sinh")
     que_quan = fields.Char("Quê quán")
     email = fields.Char("Email")
     so_dien_thoai = fields.Char("Số điện thoại")
+    trang_thai_lam_viec = fields.Selection([
+        ('dang_lam', 'Đang làm việc'),
+        ('tam_nghi', 'Tạm nghỉ'),
+        ('da_nghi', 'Đã nghỉ việc'),
+    ], string="Trạng thái làm việc", default='dang_lam')
     lich_su_cong_tac_ids = fields.One2many(
         "lich_su_cong_tac", 
         inverse_name="nhan_vien_id", 
@@ -30,7 +35,7 @@ class NhanVien(models.Model):
         inverse_name="nhan_vien_id", 
         string = "Danh sách chứng chỉ bằng cấp")
     so_nguoi_bang_tuoi = fields.Integer("Số người bằng tuổi", 
-                                        compute="so_nguoi_bang_tuoi",
+                                        compute="_compute_so_nguoi_bang_tuoi",
                                         store=True
                                         )
     
@@ -45,7 +50,7 @@ class NhanVien(models.Model):
                     ]
                 )
                 record.so_nguoi_bang_tuoi = len(records)
-    _sql_constrains = [
+    _sql_constraints = [
         ('ma_dinh_danh_unique', 'unique(ma_dinh_danh)', 'Mã định danh phải là duy nhất')
     ]
 
@@ -54,10 +59,7 @@ class NhanVien(models.Model):
         for record in self:
             if record.ho_ten_dem and record.ten:
                 record.ho_va_ten = record.ho_ten_dem + ' ' + record.ten
-    
-    
-    
-                
+
     @api.onchange("ten", "ho_ten_dem")
     def _default_ma_dinh_danh(self):
         for record in self:

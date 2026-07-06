@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+import logging
+import requests
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
+
 
 class ChatbotConfig(models.Model):
     _name = 'chatbot.config'
@@ -85,3 +90,32 @@ Quy tắc:
         if not config:
             raise ValidationError("Chưa có cấu hình chatbot nào được kích hoạt!")
         return config
+
+    def generate_embedding(self, text):
+        """Gọi Gemini Embedding API để sinh vector embedding cho một đoạn text.
+
+        Trả về list[float] hoặc None nếu lỗi (không raise để không làm gãy luồng
+        chat/lưu knowledge base khi thiếu API key hoặc mất mạng).
+        """
+        self.ensure_one()
+        if not text or not text.strip():
+            return None
+
+        model = self.embedding_model or 'models/text-embedding-004'
+        url = f"https://generativelanguage.googleapis.com/v1beta/{model}:embedContent?key={self.gemini_api_key}"
+        payload = {
+            "model": model,
+            "content": {"parts": [{"text": text[:8000]}]},
+        }
+        try:
+            response = requests.post(url, json=payload, timeout=15)
+            response.raise_for_status()
+            result = response.json()
+            values = result.get('embedding', {}).get('values')
+            if not values:
+                _logger.warning(f"Embedding API trả về không có values: {result}")
+                return None
+            return values
+        except Exception as e:
+            _logger.error(f"Lỗi khi gọi Gemini Embedding API: {str(e)}")
+            return None

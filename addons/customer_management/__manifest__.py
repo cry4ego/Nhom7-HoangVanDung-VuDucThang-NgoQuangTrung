@@ -3,7 +3,7 @@
     'version': '1.0',
     'category': 'Sales',
     'summary': 'Module quản lý khách hàng, sản phẩm, đơn hàng và chăm sóc khách hàng',
-    'depends': ['base', 'mail'],
+    'depends': ['base', 'mail', 'nhan_su'],
     'data': [
         'security/ir.model.access.csv',
         'views/customer_views.xml',

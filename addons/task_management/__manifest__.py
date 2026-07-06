@@ -15,12 +15,13 @@
     'category': 'Project Management',
     'version': '1.1',
 
-    'depends': ['base', 'mail', 'customer_management', 'nhan_su'], 
-    
+    'depends': ['base', 'mail', 'base_setup', 'customer_management', 'nhan_su'],
+
     'data': [
         'security/ir.model.access.csv',
         'views/task_view.xml',
         'views/order_inherit_view.xml',
+        'views/res_config_settings_view.xml',
         'views/menu.xml',
         'data/demo_data.xml',
     ],

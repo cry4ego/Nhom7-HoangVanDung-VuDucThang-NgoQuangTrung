@@ -16,6 +16,7 @@ class Customer(models.Model):
     username = fields.Char(string='Tên đăng nhập', index=True)
     password_hash = fields.Char(string='Mật khẩu (hash)', readonly=True)
     
+    nhan_vien_phu_trach_id = fields.Many2one('nhan_vien', string='Nhân viên phụ trách')
     order_ids = fields.One2many('khach_hang.order', 'customer_id', string='Đơn Hàng')
     feedback_ids = fields.One2many('khach_hang.feedback', 'customer_id', string='Phản Hồi')
     care_activity_ids = fields.One2many('khach_hang.care_activity', 'customer_id', string='Hoạt Động Chăm Sóc')
