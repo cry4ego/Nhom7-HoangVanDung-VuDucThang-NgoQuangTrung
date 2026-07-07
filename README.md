@@ -21,7 +21,7 @@
 
 ## 📖 1. Giới thiệu
 
-**Công Nghệ Hay** là nền tảng ERP được phát triển dựa trên mã nguồn mở Odoo, tập trung vào việc quản lý khách hàng, hỗ trợ tự động bằng AI Chatbot, và quản lý công việc dự án. Platform được áp dụng trong học phần **Thực tập doanh nghiệp** tại Khoa Công Nghệ Thông Tin - Đại học Đại Nam.
+**Công Nghệ Hay** là nền tảng ERP được phát triển dựa trên mã nguồn mở Odoo, tập trung vào việc quản lý khách hàng, hỗ trợ tự động bằng AI Chatbot, và quản lý công việc dự án. Platform được áp dụng trong học phần **Hội nhập doanh nghiệp ** tại Khoa Công Nghệ Thông Tin - Đại học Đại Nam.
 
 ### 🎯 Mục tiêu dự án
 - Xây dựng hệ thống quản lý khách hàng toàn diện (CRM)
@@ -338,7 +338,7 @@ Dự án được phát triển bởi sinh viên Khoa Công Nghệ Thông Tin - 
 - **Vũ Minh Quốc** - Developer
 
 ### Giảng viên hướng dẫn
-- **Lê Tuấn Anh** - Khoa Công Nghệ Thông Tin
+- **Nguyễn Văn Nhán** - Khoa Công Nghệ Thông Tin
 
 ## 📝 12. License
 
@@ -353,3 +353,5 @@ Dự án được phát triển bởi sinh viên Khoa Công Nghệ Thông Tin - 
         <a href="https://www.facebook.com/DNUAIoTLab">AIoTLab</a>
     </p>
 </div>
+## Ghi chú test commit
+Đã fork và cấu hình Git thành công - HNDN
