@@ -14,6 +14,7 @@
     'author': "Vũ Minh Quốc",
     'category': 'Project Management',
     'version': '1.1',
+    'license': 'LGPL-3',
 
     'depends': ['base', 'mail', 'base_setup', 'customer_management', 'nhan_su'],
 

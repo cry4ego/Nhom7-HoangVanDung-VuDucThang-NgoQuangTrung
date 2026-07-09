@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from datetime import date
@@ -6,42 +6,42 @@ from odoo.tools import date_utils
 
 class TaskManagement(models.Model):
     _name = 'task.management.task'
-    _description = 'Quản lý Công Việc'
+    _description = 'Quáº£n lÃ½ CÃ´ng Viá»‡c'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'priority desc, deadline asc'
 
-    name = fields.Char(string='Tên công việc', required=True, tracking=True)
-    description = fields.Html(string='Mô tả chi tiết') 
+    name = fields.Char(string='TÃªn cÃ´ng viá»‡c', required=True, tracking=True)
+    description = fields.Html(string='MÃ´ táº£ chi tiáº¿t') 
 
-    partner_id = fields.Many2one('khach_hang.customer', string='Khách hàng', tracking=True)
-    order_id = fields.Many2one('khach_hang.order', string='Đơn hàng liên quan', tracking=True, ondelete='cascade')
+    partner_id = fields.Many2one('khach_hang.customer', string='KhÃ¡ch hÃ ng', tracking=True)
+    order_id = fields.Many2one('khach_hang.order', string='ÄÆ¡n hÃ ng liÃªn quan', tracking=True, ondelete='cascade')
  
-    nhan_vien_id = fields.Many2one('nhan_vien', string='Người thực hiện', tracking=True)
+    nhan_vien_id = fields.Many2one('nhan_vien', string='NgÆ°á»i thá»±c hiá»‡n', tracking=True)
     
-    start_date = fields.Date(string='Ngày bắt đầu', default=fields.Date.context_today)
-    deadline = fields.Date(string='Hạn chót', tracking=True)
+    start_date = fields.Date(string='NgÃ y báº¯t Ä‘áº§u', default=fields.Date.context_today)
+    deadline = fields.Date(string='Háº¡n chÃ³t', tracking=True)
     
-    progress = fields.Integer(string='Tiến độ (%)', default=0)
+    progress = fields.Integer(string='Tiáº¿n Ä‘á»™ (%)', default=0)
     
     priority = fields.Selection([
-        ('0', 'Thấp'),
-        ('1', 'Trung bình'),
+        ('0', 'Tháº¥p'),
+        ('1', 'Trung bÃ¬nh'),
         ('2', 'Cao'),
-        ('3', 'Rất quan trọng')
-    ], string='Độ ưu tiên', default='1', widget='priority')
+        ('3', 'Ráº¥t quan trá»ng')
+    ], string='Äá»™ Æ°u tiÃªn', default='1')
 
     state = fields.Selection([
-        ('todo', 'Cần làm'),
-        ('in_progress', 'Đang thực hiện'),
-        ('done', 'Hoàn thành'),
-        ('cancel', 'Hủy bỏ')
-    ], string='Trạng thái', default='todo', tracking=True, group_expand='_expand_states')
+        ('todo', 'Cáº§n lÃ m'),
+        ('in_progress', 'Äang thá»±c hiá»‡n'),
+        ('done', 'HoÃ n thÃ nh'),
+        ('cancel', 'Há»§y bá»')
+    ], string='Tráº¡ng thÃ¡i', default='todo', tracking=True, group_expand='_expand_states')
 
     @api.constrains('start_date', 'deadline')
     def _check_dates(self):
         for record in self:
             if record.deadline and record.start_date and record.deadline < record.start_date:
-                raise ValidationError("Lỗi Logic: Hạn chót phải sau ngày bắt đầu!")
+                raise ValidationError("Lá»—i Logic: Háº¡n chÃ³t pháº£i sau ngÃ y báº¯t Ä‘áº§u!")
 
     @api.onchange('state')
     def _onchange_state(self):
@@ -73,9 +73,10 @@ class TaskManagement(models.Model):
                 'customer_id': self.partner_id.id,
                 'care_date': fields.Date.context_today(self),
                 'contact_method': 'phone',
-                'notes': f"Công việc \"{self.name}\" đã hoàn thành. Nhân viên thực hiện: {self.nhan_vien_id.ho_va_ten if self.nhan_vien_id else 'N/A'}",
+                'notes': f"CÃ´ng viá»‡c \"{self.name}\" Ä‘Ã£ hoÃ n thÃ nh. NhÃ¢n viÃªn thá»±c hiá»‡n: {self.nhan_vien_id.ho_va_ten if self.nhan_vien_id else 'N/A'}",
             })
 
     def action_cancel(self):
         self.state = 'cancel'
         self.progress = 0
+
