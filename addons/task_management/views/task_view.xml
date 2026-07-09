@@ -44,10 +44,10 @@
                             </div>
                             <div class="o_kanban_record_body">
                                 <span t-if="record.partner_id.raw_value" class="text-primary">
-                                    <i class="fa fa-user"/> <field name="partner_id"/>
+                                    <i class="fa fa-user" title="Khách hàng"/> <field name="partner_id"/>
                                 </span>
                                 <div t-if="record.deadline.raw_value" class="text-muted mt-1">
-                                    <i class="fa fa-clock-o"/> <field name="deadline"/>
+                                    <i class="fa fa-clock-o" title="Hạn chót"/> <field name="deadline"/>
                                 </div>
                             </div>
                             <div class="o_kanban_record_bottom mt-2">

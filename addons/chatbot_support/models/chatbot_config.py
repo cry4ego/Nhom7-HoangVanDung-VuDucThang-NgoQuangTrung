@@ -119,3 +119,4 @@ Quy tắc:
         except Exception as e:
             _logger.error(f"Lỗi khi gọi Gemini Embedding API: {str(e)}")
             return None
+

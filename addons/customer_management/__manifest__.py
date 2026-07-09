@@ -1,6 +1,7 @@
 {
     'name': "Quản Lý Khách Hàng",
     'version': '1.0',
+    'license': 'LGPL-3',
     'category': 'Sales',
     'summary': 'Module quản lý khách hàng, sản phẩm, đơn hàng và chăm sóc khách hàng',
     'depends': ['base', 'mail', 'nhan_su'],
