@@ -14,6 +14,7 @@
         'views/product_category_views.xml',
         'views/care_views.xml',
         'data/demo_data.xml',
+        'data/cron_data.xml',  # [F5] Churn Detection cron
     ],
     'installable': True,
     'application': True,

@@ -4,12 +4,15 @@
         <field name="name">khach_hang.customer.tree</field>
         <field name="model">khach_hang.customer</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree decoration-danger="churn_risk_label == 'high'"
+                  decoration-warning="churn_risk_label == 'medium'">
                 <field name="name"/>
-                <field name="username"/>
                 <field name="email"/>
                 <field name="phone"/>
                 <field name="nhan_vien_phu_trach_id"/>
+                <field name="order_count"/>
+                <field name="churn_risk_label" optional="show" string="Rủi ro"/>
+                <field name="churn_risk_score" optional="show" string="Score (%)"/>
             </tree>
         </field>
     </record>
@@ -20,6 +23,11 @@
         <field name="model">khach_hang.customer</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <!-- [F5] Nút tính churn risk thủ công -->
+                    <button name="action_compute_churn_risk" string="🔄 Tính Churn Risk" type="object"
+                            class="oe_highlight" icon="fa-refresh"/>
+                </header>
                 <sheet>
                     <group>
                         <group string="Thông tin cơ bản">
@@ -34,6 +42,13 @@
                             <field name="password_hash" invisible="1"/>
                         </group>
                     </group>
+                    <!-- [F5] AI Churn Risk Block -->
+                    <group string="🤖 Phân tích rủi ro rời bỏ (AI)">
+                        <field name="churn_risk_label" readonly="1"/>
+                        <field name="churn_risk_score" readonly="1" string="Điểm rủi ro (%)"/>
+                        <field name="churn_reason" readonly="1" string="Lý do"/>
+                        <field name="churn_last_computed" readonly="1" string="Tính lần cuối"/>
+                    </group>
                     <notebook>
                         <page string="Đơn Hàng">
                             <field name="order_ids">
@@ -41,6 +56,7 @@
                                     <field name="name"/>
                                     <field name="date_order"/>
                                     <field name="total_amount"/>
+                                    <field name="state"/>
                                 </tree>
                             </field>
                         </page>
@@ -48,7 +64,8 @@
                             <field name="feedback_ids">
                                 <tree>
                                     <field name="question"/>
-                                    <field name="supporter"/>
+                                    <field name="sentiment"/>
+                                    <field name="sentiment_score"/>
                                     <field name="answer"/>
                                 </tree>
                             </field>
@@ -57,17 +74,6 @@
                             <field name="care_activity_ids">
                                 <tree>
                                     <field name="care_date"/>
-                                    <field name="care_staff"/>
-                                    <field name="contact_method"/>
-                                    <field name="notes"/> <!-- Thay feedback bằng notes -->
-                                </tree>
-                            </field>
-                        </page>
-                        <page string="Lịch Sử Chăm Sóc">
-                            <field name="care_activity_ids">
-                                <tree>
-                                    <field name="care_date"/>
-                                    <field name="care_staff"/>
                                     <field name="contact_method"/>
                                     <field name="notes"/>
                                 </tree>

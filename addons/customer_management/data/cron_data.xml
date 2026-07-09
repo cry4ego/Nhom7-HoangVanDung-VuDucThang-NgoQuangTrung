@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- [F5] Cron: Tính Churn Risk hàng tuần (Thứ Hai 7:00 AM) -->
+    <record id="ir_cron_compute_churn_risk" model="ir.cron">
+        <field name="name">[F5] Tính điểm Churn Risk cho toàn bộ Khách hàng</field>
+        <field name="model_id" ref="customer_management.model_khach_hang_customer"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_compute_churn_risk()</field>
+        <field name="interval_number">7</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+        <field name="priority">10</field>
+    </record>
+</odoo>
