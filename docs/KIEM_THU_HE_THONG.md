@@ -131,7 +131,84 @@ Test trong Odoo:
 
 ---
 
-## 5. Kiểm tra tích hợp dữ liệu chung (Mức 1 bắt buộc)
+## 5. Mức 3 nâng cao — Bộ tính năng AI F1–F10
+
+> **Chuẩn bị chung:** bật Developer Mode để chạy cron thủ công:
+> **Settings > General Settings**, cuộn xuống cuối → mục **Developer Tools** → **Activate the developer mode**.
+> Sau đó menu chạy cron nằm ở: **Settings > Technical > Automation > Scheduled Actions**.
+> Các tính năng gọi Gemini (F1/F4/F10) cần API key còn quota; hết quota thì rơi về fallback (vẫn không được crash).
+
+### 5.1. F1 — AI Smart Priority (task_management)
+
+- [ ] Tạo 1 đơn hàng mới (giá trị lớn hoặc ngày giao gần) → mở task vừa tự sinh.
+- [ ] Field `Độ ưu tiên` của task **không phải lúc nào cũng là mặc định "Cao" (2)** — AI chọn 0–3 theo ngữ cảnh đơn.
+- [ ] Xem log terminal: có dòng `[F1-AI] Priority đề xuất bởi AI: <n>` (hoặc `[F1-AI] Gemini không khả dụng..., dùng rule-based fallback` nếu hết quota — đơn hàng vẫn phải tạo thành công).
+
+### 5.2. F3 — Auto Escalation task quá hạn (task_management)
+
+- [ ] Mở 1 task đang `todo`/`in_progress`, sửa `Hạn chót` thành **hôm qua** (quá hạn 1 ngày).
+- [ ] Mở 1 task khác, sửa `Hạn chót` lùi **6+ ngày** (để test tái phân công).
+- [ ] Vào **Settings > Technical > Automation > Scheduled Actions** → mở `[F3] Kiểm tra Task quá hạn & Tự động Leo thang` → bấm **Run Manually**.
+- [ ] Task quá hạn 1 ngày: checkbox `Đã gửi cảnh báo` = ✔; nếu đã bật Telegram → group nhận tin `⚠️ CẢNH BÁO: Task quá hạn...`.
+- [ ] Task quá hạn 6 ngày: field `Nhân viên` **đổi sang người khác** (người ít việc nhất), chatter của task có ghi chú `🔄 [Tự động - F3 Escalation] ... Tái phân công từ A → B`.
+- [ ] Chạy cron lần 2 → task đã cảnh báo rồi **không gửi lại** (escalation_sent chống spam).
+
+### 5.3. F4 — Sentiment Analysis phản hồi (customer_management)
+
+- [ ] **Quản Lý Khách Hàng > Phản Hồi** → tạo phản hồi mới với câu tiêu cực rõ (VD: *"Dịch vụ quá tệ, giao hàng trễ, tôi rất thất vọng"*) → Lưu.
+- [ ] Mở lại bản ghi: `Cảm xúc` = 😠 Tiêu cực, `Điểm cảm xúc` âm (gần −1), `Giải thích AI` có nội dung.
+- [ ] Tạo phản hồi tích cực (VD: *"Sản phẩm tuyệt vời, nhân viên nhiệt tình"*) → `Cảm xúc` = 😊 Tích cực, điểm dương.
+- [ ] Hết quota Gemini → phản hồi vẫn lưu bình thường, 3 field sentiment để trống (xem log `[F4]`).
+
+### 5.4. F5 — Churn Detection (customer_management)
+
+- [ ] Mở 1 khách hàng → bấm nút **🔄 Tính Churn Risk** → 4 field cập nhật: `Rủi ro rời bỏ (%)`, `Mức rủi ro` (🟢/🟡/🔴), `Tính lần cuối`, `Lý do rủi ro`.
+- [ ] Dựng 1 KH rủi ro cao để test: KH có vài phản hồi tiêu cực (từ 5.3) + 1-2 đơn bị hủy + lâu không có đơn hoàn thành → bấm tính lại → score ≥ 65% (🔴 Cao).
+- [ ] KH 🔴 Cao: vào **Hoạt Động Chăm Sóc** → có bản ghi tự sinh chứa `[F5 Churn] ⚠️ Khách hàng có rủi ro rời bỏ cao...`.
+- [ ] Bấm tính lại lần nữa trong ngày → **không tạo care activity trùng** (chống trùng 7 ngày).
+- [ ] Chạy cron `[F5] Tính điểm Churn Risk cho toàn bộ Khách hàng` (Run Manually) → mọi KH đều có score; danh sách KH tô màu đỏ/vàng theo mức rủi ro.
+
+### 5.5. F7 — Conversational Commerce (chatbot_support)
+
+> Widget 🤖 và trang `/chatbot` hiện gọi endpoint v1; F7 chạy ở endpoint riêng `/chatbot/api/chat/v2` — test bằng curl:
+
+```bash
+# Intent: kiểm tra đơn hàng (thay ORD001 bằng mã đơn thật trong DB)
+curl -s -X POST http://localhost:8069/chatbot/api/chat/v2 -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","params":{"message":"Kiểm tra đơn hàng ORD001 giúp tôi","session_id":"test-f7-1"}}'
+
+# Intent: tìm sản phẩm theo ngưỡng giá
+curl -s -X POST http://localhost:8069/chatbot/api/chat/v2 -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","params":{"message":"Tìm sản phẩm dưới 20 triệu","session_id":"test-f7-2"}}'
+
+# Intent: yêu cầu hỗ trợ / đổi trả
+curl -s -X POST http://localhost:8069/chatbot/api/chat/v2 -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","params":{"message":"Tôi muốn đổi trả sản phẩm","session_id":"test-f7-3"}}'
+```
+
+- [ ] Câu 1: trả về đúng trạng thái/tổng tiền của đơn được hỏi (dữ liệu thật từ DB).
+- [ ] Câu 2: liệt kê sản phẩm có giá dưới ngưỡng hỏi.
+- [ ] Câu 3: trả lời quy trình hỗ trợ/đổi trả.
+- [ ] Log terminal có dòng `[F7]` nhận diện intent tương ứng.
+
+### 5.6. F9 — Self-learning Knowledge Base (chatbot_support)
+
+- [ ] Chat vài câu với bot (widget 🤖) để có tin nhắn bot trong DB.
+- [ ] Vào **AI Chatbot > Lịch sử Chat** → mở conversation vừa chat → tab tin nhắn → click 1 dòng tin nhắn **bot** → đặt `Đánh giá tin nhắn` = 👎 Không tốt → Lưu.
+- [ ] Chạy cron `[F9] Phân tích câu trả lời bị đánh giá thấp → KB draft` (Run Manually).
+- [ ] Vào **AI Chatbot > Knowledge Base** → ⚠️ draft ở trạng thái **archived** nên danh sách mặc định KHÔNG hiển thị: bấm **Filters > Archived** → thấy bản ghi mới tên bắt đầu bằng `[F9 Draft]` kèm câu hỏi gốc (admin sửa nội dung trả lời đúng rồi bấm Unarchive để kích hoạt).
+- [ ] Tin nhắn 👎 đó được đánh dấu `flagged_for_review` = ✔ → chạy cron lần 2 **không tạo draft trùng**.
+
+### 5.7. F10 — AI Dashboard (chatbot_support)
+
+- [ ] Chạy cron `[F10] Sinh AI Business Summary hàng ngày` (Run Manually).
+- [ ] Vào **AI Chatbot > 🤖 AI Dashboard** → có bản ghi hôm nay: 6 ô KPI (đơn hôm nay, doanh thu, task quá hạn, task đang mở, KH churn cao, phản hồi tiêu cực) + đoạn tóm tắt điều hành tiếng Việt do Gemini viết.
+- [ ] Chạy cron lần 2 trong cùng ngày → **không sinh trùng** (log `Summary đã tồn tại cho hôm nay, bỏ qua`). Muốn sinh lại: xóa bản ghi hôm nay rồi chạy cron.
+- [ ] Số KPI khớp dữ liệu thật (đối chiếu số task quá hạn với danh sách task, số KH 🔴 với mục 5.4).
+
+---
+
+## 6. Kiểm tra tích hợp dữ liệu chung (Mức 1 bắt buộc)
 
 - [ ] Xóa/sửa 1 nhân viên trong `nhan_su` → tất cả nơi tham chiếu (khách hàng phụ trách, task đang gán) phản ánh đúng thay đổi (không có bản ghi nhân viên "ảo" tạo riêng ở module khác).
 - [ ] Xác nhận: không module nào (`customer_management`, `task_management`, `chatbot_support`) có model/tính năng tự tạo nhân viên riêng — tất cả đều dùng `Many2one('nhan_vien', ...)` trỏ về `nhan_su`.
@@ -139,7 +216,7 @@ Test trong Odoo:
 
 ---
 
-## 6. Kiểm tra tài liệu nộp kèm (không phải code)
+## 7. Kiểm tra tài liệu nộp kèm (không phải code)
 
 - [ ] File `docs/business-flow/Nhom07_BusinessFlow_QuanLyKhachHang_QuanLyCongViec.pdf` mở được, đọc rõ chữ, đủ: actor, các bước, điểm tích hợp HRM, trigger Mức 2, điểm AI/API Mức 3.
 - [ ] File `docs/poster/Nhom07_Poster_HeThongERP.pdf` mở được, đọc rõ chữ.
@@ -148,7 +225,7 @@ Test trong Odoo:
 
 ---
 
-## 7. Bảng tổng hợp kết quả (điền tay trước khi nộp/bảo vệ)
+## 8. Bảng tổng hợp kết quả (điền tay trước khi nộp/bảo vệ)
 
 | Hạng mục | Đạt | Ghi chú lỗi (nếu có) |
 |---|---|---|
@@ -159,19 +236,30 @@ Test trong Odoo:
 | Mức 2 — care activity tự động (mục 3.3) | [ ] | |
 | Mức 3 — Telegram External API (mục 3.4) | [ ] | |
 | Mức 3 — Chatbot RAG vector + fallback (mục 4) | [ ] | |
-| Tích hợp dữ liệu chung / không hardcode (mục 5) | [ ] | |
-| Tài liệu nộp kèm (mục 6) | [ ] | |
+| F1 — AI Smart Priority (mục 5.1) | [ ] | |
+| F3 — Auto Escalation (mục 5.2) | [ ] | |
+| F4 — Sentiment Analysis (mục 5.3) | [ ] | |
+| F5 — Churn Detection (mục 5.4) | [ ] | |
+| F7 — Conversational Commerce (mục 5.5) | [ ] | |
+| F9 — Self-learning KB (mục 5.6) | [ ] | |
+| F10 — AI Dashboard (mục 5.7) | [ ] | |
+| Tích hợp dữ liệu chung / không hardcode (mục 6) | [ ] | |
+| Tài liệu nộp kèm (mục 7) | [ ] | |
 
 ---
 
-## 8. Xử lý sự cố thường gặp
+## 9. Xử lý sự cố thường gặp
 
 | Triệu chứng | Nguyên nhân thường gặp | Cách kiểm tra |
 |---|---|---|
 | Upgrade module lỗi ngay | Sai cú pháp Python/XML trong file vừa sửa | Đọc traceback cuối cùng trong log, tìm đúng tên file:dòng |
+| Sửa code Python nhưng hành vi không đổi | `--dev=all` KHÔNG tự reload vì venv thiếu package `watchdog` | `pip install watchdog` hoặc restart Odoo thủ công sau mỗi lần sửa |
+| Lỗi `InFailedSqlTransaction` / thiếu cột DB | Code có field mới nhưng chưa upgrade module (schema lệch) | Restart với `-u <module>` |
 | Task không tự tạo khi tạo đơn | `order_inherit.py` chưa được load (chưa `-u task_management`) | Chạy lại lệnh upgrade ở mục 0 |
 | `nhan_vien_id` của task luôn trống | Không còn nhân viên nào ở trạng thái "Đang làm việc" | Vào QLNS kiểm tra lại trạng thái nhân viên |
 | Không nhận được tin nhắn Telegram | Sai Bot Token/Chat ID, hoặc bot chưa được thêm vào group | Xem log dòng `Telegram API lỗi:`; gọi thử `getUpdates` |
 | Chatbot luôn trả lời fallback message | Sai/hết hạn Gemini API Key, hoặc hết quota | Xem log dòng `GEMINI FAILED` / `Lỗi khi gọi Gemini Embedding API:` |
-| `embedding_vector` luôn rỗng | Gemini Embedding API lỗi, hoặc tài liệu KB chưa được sửa/tạo lại sau khi thêm tính năng | Sửa lại nội dung tài liệu 1 lần để trigger sinh embedding |
+| `embedding_vector` luôn rỗng | Model embedding lỗi thời (Google đã ngừng `text-embedding-004`) hoặc API key lỗi | Cấu hình phải là `models/gemini-embedding-001`; sửa nội dung tài liệu 1 lần để trigger sinh lại |
 | `confidence_score` vẫn thấy giống nhau nhiều câu | Đang rơi vào nhánh fallback keyword (không phải bug) | Kiểm tra Gemini API Key còn hoạt động không |
+| Cron F1/F4/F10 trả kết quả fallback đơn giản | Gemini hết quota (429) — thiết kế chấp nhận | Xem log `[F1-AI]`/`[F4]`/`[F10]`, thử lại sau vài phút |
+| Sentiment/Churn không cập nhật trên form | View đang mở bản cache cũ | F5 (refresh trình duyệt) sau khi chạy cron/nút tính |
